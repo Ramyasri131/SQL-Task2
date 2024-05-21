@@ -184,6 +184,36 @@ group by orders.orderId,employee.LastName,employee.FirstName
 order by count(datediff(day,orders.orderdate,orders.RequiredDate)) desc) as T2
 order by label;
 
+--or
+
+with [least_Shipping_days] as(
+select top 1 orders.orderId from orders
+inner join OrderDetails on orders.orderId=OrderDetails.orderId
+group by orders.orderId
+order by count(datediff(day,orders.orderdate,orders.RequiredDate))),
+[Most_Shipping_days] as(
+select top 1 orders.orderId  from orders
+inner join OrderDetails on orders.orderId=OrderDetails.orderId
+group by orders.orderId
+order by count(datediff(day,orders.orderdate,orders.RequiredDate)) desc)
+
+select  1 as label,orders.orderId,concat(employee.lastName,' ',employee.firstName) as [Full Name] 
+,count(orderdetails.productID) as [Number of Products] ,count(datediff(day,orders.orderdate,orders.RequiredDate)) as [No of shipping days]
+from orders 
+inner join	OrderDetails on	 orders.orderId=OrderDetails.orderId
+inner join employee on employee.EmployeeID=orders.EmployeeID 
+inner join least_Shipping_days on least_Shipping_days.OrderID=orders.OrderID
+group by orders.orderId,employee.LastName,employee.FirstName
+union
+select  2 as label,orders.orderId,concat(employee.lastName,' ',employee.firstName) as [Full Name] 
+,count(orderdetails.productID) as [Number of Products] ,count(datediff(day,orders.orderdate,orders.RequiredDate)) as [No of shipping days]
+from orders 
+inner join	OrderDetails on	 orders.orderId=OrderDetails.orderId
+inner join employee on employee.EmployeeID=orders.EmployeeID 
+inner join Most_Shipping_days on Most_Shipping_days.OrderID=orders.OrderID
+group by orders.orderId,employee.LastName,employee.FirstName
+order by label;
+
 --2. Which is cheapest and the costliest of products purchased in the second week of October, 1997. Get the product ID, product Name and unit price. Use 1 and 2 in the final result set to distinguish the 2 product
 select 1 as label,* from
 (select top 1 products.productID,products.ProductName,products.UnitPrice from Products 
@@ -199,6 +229,40 @@ inner join orders on orderdetails.orderID=orders.orderId and (month(orders.order
 group by products.productID,products.ProductName,products.UnitPrice,orders.orderdate,orderdetails.Quantity
 order by (products.unitprice*orderdetails.Quantity)desc) as T2
 order by label;
+
+--or
+
+with 
+[chepest_product] as(
+select  top 1 products.ProductID as Id from orders 
+inner join OrderDetails on orders.orderId=OrderDetails.OrderID
+inner join Products on products.ProductID=OrderDetails.ProductID
+where (month(orders.orderdate)=10 and year(orders.orderdate)=1997 and (datename(dd,orders.OrderDate)<15 and datename(dd,orders.OrderDate)>8))
+order by (products.unitprice*orderdetails.Quantity)),
+[Costliest_product] as(
+select  top 1 products.ProductID as Id from orders 
+inner join OrderDetails on orders.orderId=OrderDetails.OrderID
+inner join Products on products.ProductID=OrderDetails.ProductID
+where (month(orders.orderdate)=10 and year(orders.orderdate)=1997 and (datename(dd,orders.OrderDate)<15 and datename(dd,orders.OrderDate)>8))
+order by (products.unitprice*orderdetails.Quantity) desc)
+
+select 1 as label,products.productID,products.ProductName,products.UnitPrice  from Products
+inner join orderdetails on products.ProductID=OrderDetails.productID
+inner join orders on orderdetails.orderID=orders.orderId and (month(orders.orderdate)=10 and year(orders.orderdate)=1997 and (datename(dd,orders.OrderDate)<15 and datename(dd,orders.OrderDate)>8))
+inner join [chepest_product] on chepest_product.Id=Products.ProductID
+group by products.productID,products.ProductName,products.UnitPrice,orders.orderdate,orderdetails.Quantity
+union
+select 2 as label,products.productID,products.ProductName,products.UnitPrice  from Products
+inner join orderdetails on products.ProductID=OrderDetails.productID
+inner join orders on orderdetails.orderID=orders.orderId and (month(orders.orderdate)=10 and year(orders.orderdate)=1997 and (datename(dd,orders.OrderDate)<15 and datename(dd,orders.OrderDate)>8))
+inner join [Costliest_product] on [Costliest_product].Id=Products.ProductID
+group by products.productID,products.ProductName,products.UnitPrice,orders.orderdate,orderdetails.Quantity
+order by label;
+
+
+
+
+
 
 
 --'Case'
